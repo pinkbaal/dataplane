@@ -1,0 +1,42 @@
+#!/bin/bash
+
+DP_ROOT_DIR="`dirname $(pwd)`"
+
+
+dp_start()
+{
+	echo "data plane start"
+	modprobe uio
+	cd ${DP_ROOT_DIR}/build/dpdk/kmod
+	insmod igb_uio.ko
+}
+
+dp_stop()
+{
+	echo "data plane stop"
+}
+
+dp_status()
+{
+	echo "unknow"
+}
+
+
+case $1 in
+	start)
+		dp_start
+		;;
+	stop)
+		dp_stop
+		;;
+	restart)
+		dp_stop
+		dp_start
+		;;
+	status)
+		dp_status
+		;;
+	*)
+		echo "Usage: $0 start|stop|restart|status"
+		;;
+esac

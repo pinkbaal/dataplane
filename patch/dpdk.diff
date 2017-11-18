@@ -1,0 +1,25 @@
+diff -ruN dpdk-stable-17.05.2/lib/librte_eal/linuxapp/igb_uio/igb_uio.c dpdk-stable-17.05.2.update/lib/librte_eal/linuxapp/igb_uio/igb_uio.c
+--- dpdk-stable-17.05.2/lib/librte_eal/linuxapp/igb_uio/igb_uio.c	2017-09-07 16:14:50.000000000 +0800
++++ dpdk-stable-17.05.2.update/lib/librte_eal/linuxapp/igb_uio/igb_uio.c	2017-11-10 23:35:35.121768159 +0800
+@@ -402,6 +402,7 @@
+ #endif
+ 		/* fall back to INTX */
+ 	case RTE_INTR_MODE_LEGACY:
++#if 0
+ 		if (pci_intx_mask_supported(dev)) {
+ 			dev_dbg(&dev->dev, "using INTX");
+ 			udev->info.irq_flags = IRQF_SHARED | IRQF_NO_THREAD;
+@@ -411,6 +412,13 @@
+ 		}
+ 		dev_notice(&dev->dev, "PCI INTX mask not supported\n");
+ 		/* fall back to no IRQ */
++#else
++		dev_dbg(&dev->dev, "using INTX");
++		udev->info.irq_flags = IRQF_SHARED;
++		udev->info.irq = dev->irq;
++		udev->mode = RTE_INTR_MODE_LEGACY;
++		break;
++#endif
+ 	case RTE_INTR_MODE_NONE:
+ 		udev->mode = RTE_INTR_MODE_NONE;
+ 		udev->info.irq = 0;

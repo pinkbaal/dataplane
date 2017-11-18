@@ -1,0 +1,14 @@
+#git忽略文件列表
+
+*.a
+*.o
+*.o.cmd
+*.a.cmd
+*.o.d
+_postinstall
+_postclean
+_postbuild
+dataplane
+
+
+
