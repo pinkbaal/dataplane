@@ -14,4 +14,6 @@ SRCS-y += dp_memory_dump.c
 
 CFLAGS += -I$(DP_ROOT_DIR)/include -I$(DP_ROOT_DIR)/include/net -I$(DP_ROOT_DIR)/include/lib
 
+EXTRA_CFLAGS += -O0 -g -Wfatal-errors
+
 include $(RTE_SDK)/mk/rte.extlib.mk

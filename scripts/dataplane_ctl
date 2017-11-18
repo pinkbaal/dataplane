@@ -1,14 +1,32 @@
 #!/bin/bash
 
 DP_ROOT_DIR="`dirname $(pwd)`"
+DPDK_ROOT_DIR=${DP_ROOT_DIR}/extlib/dpdk/dpdk-stable-17.05.2
+
+dp_start_pre()
+{
+	#设置大页
+	mkdir -p /mnt/huge
+	mount -t hugetlbfs nodev /mnt/huge
+	echo 64 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
+
+	#设置驱动
+        echo "data plane start"
+        modprobe uio
+        cd ${DP_ROOT_DIR}/build/dpdk/kmod
+        insmod igb_uio.ko
+
+	#绑定网卡
+	ip link set dev eth2 down
+	ip link set dev eth3 down
+	${DPDK_ROOT_DIR}/dpdk-devbind.py --bind=igb_uio eth2
+	${DPDK_ROOT_DIR}/dpdk-devbind.py --bind=igb_uio eth3
+}
 
 
 dp_start()
 {
-	echo "data plane start"
-	modprobe uio
-	cd ${DP_ROOT_DIR}/build/dpdk/kmod
-	insmod igb_uio.ko
+	dp_start_pre	
 }
 
 dp_stop()

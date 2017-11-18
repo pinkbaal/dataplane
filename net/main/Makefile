@@ -25,6 +25,9 @@ LDLIBS += -ldp_memory
 #LDLIBS += $(subst main,ipv4,$(RTE_OUTPUT))/ipv4.o
 LDLIBS += $(DP_ROOT_DIR)/net/ipv4/$(RTE_TARGET)/ipv4.o
 #LDLIBS += $(DP_ROOT_DIR)/net/ipv4/ipv4.o
+
+EXTRA_CFLAGS += -O0 -g -Wfatal-errors
+
 include $(RTE_SDK)/mk/rte.extapp.mk
 
 

@@ -25,6 +25,8 @@ compile_dpdk()
 		cd -
 	fi
 	cd ${DPDK_ROOT_DIR}
+	#修改dpdk编译选项 调试dpdk
+	find . -name Makefile |xargs sed -i "s/-O3/-O0 -g/g"
 	if [ -d x86_64-native-linuxapp-gcc ]; then
 		rm -rf x86_64-native-linuxapp-gcc/*
 		rm -rf x86_64-native-linuxapp-gcc

@@ -14,6 +14,7 @@ DIRS-y += ipv4 main
 
 DEPDIRS-userstack := ipv4
 
+EXTRA_CFLAGS += -O0 -g -Wfatal-errors
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk
 
