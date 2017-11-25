@@ -2,10 +2,10 @@
 #define __US_MEMORY_H__
 
 
-void *us_malloc(unsigned long val, unsigned int size);
+void *dp_malloc(unsigned long val, unsigned int size);
 
-void *us_zalloc(unsigned long val, unsigned int size);
+void *dp_zalloc(unsigned long val, unsigned int size);
 
-void us_free(void *);
+void dp_free(void *);
 
 #endif //__US_MEMORY_H__

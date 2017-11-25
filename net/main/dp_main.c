@@ -14,13 +14,58 @@
 #include <rte_cycles.h>
 
 
+static const struct rte_eth_conf port_conf = {
+	.rxmode = {
+		.split_hdr_size = 0,
+		.header_split   = 0, /**< Header Split disabled */
+		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
+		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
+		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
+		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
+	},
+	.txmode = {
+		.mq_mode = ETH_MQ_TX_NONE,
+	},
+};
+
 
 
 static s32 lcore_fwd_loop(__attribute__((unused)) void *arg)
 {
+	u16 rx_port_id, tx_port_id, nb_ports, rx_nb_pkts, tx_nb_pkts;
+	u32 lcore_id;
+	struct rte_mbuf *pkts_burst[8];
+	
+	lcore_id = rte_lcore_id();
+	nb_ports = rte_eth_dev_count();
+
 	while(1) {
-		printf("[%s]%u# lcore id:%d\n", __FUNCTION__, __LINE__, rte_lcore_id());
-		sleep(1);
+		if (lcore_id == 0) {
+			sleep(1);
+			continue;
+		}
+//		printf("[%s]%u# lcore id:%d\n", __FUNCTION__, __LINE__, rte_lcore_id());
+		/* rx */
+		for (rx_port_id = 0; rx_port_id < nb_ports; rx_port_id++) {
+			rx_nb_pkts = rte_eth_rx_burst(rx_port_id, 0, pkts_burst, 8);
+			if (rx_nb_pkts > 0) {
+				/* tx */
+				for (tx_port_id = 0; tx_port_id < nb_ports; tx_port_id++) {
+					if (tx_port_id != rx_port_id) {
+						tx_nb_pkts = rte_eth_tx_burst(tx_port_id, 0, pkts_burst, rx_nb_pkts);
+						if (rx_nb_pkts == tx_nb_pkts) {
+							printf("[%s]%u# lcore:%d tx success rx:%d, tx:%d\n", 
+								__FUNCTION__, __LINE__, rte_lcore_id(), rx_nb_pkts, tx_nb_pkts);
+						} else {
+							printf("[%s]%u# lcore:%d tx failed rx:%d, tx:%d\n", 
+								__FUNCTION__, __LINE__, rte_lcore_id(), rx_nb_pkts, tx_nb_pkts);
+						}
+						break;
+					}	
+				}
+			}
+		}	
+//		sleep(1);		
 	}
 
 	return 0;
@@ -34,10 +79,12 @@ static s32 dataplane_init(void)
 
 s32 main(s32 argc, s8 **argv)
 {
+	u8 portid, nb_ports;
+	u16 nb_queue = 1, queue_id;
 	s32 ret;
-	u32 lcore_id, nb_ports;
+	u32 lcore_id;
 	struct rte_mempool *mbuf_pool;
-	s8 *p = NULL;
+	struct rte_eth_dev_info dev_info[RTE_MAX_ETHPORTS];
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
@@ -55,9 +102,34 @@ s32 main(s32 argc, s8 **argv)
 		rte_exit(-1, "Cannot create mbuf pool\n");
 	}
 
-	p = us_malloc(0, 32);
-	printf("p:%p\n", p);
-	
+	memset(dev_info, 0, sizeof(dev_info));
+	for (portid = 0; portid < nb_ports; portid++) {
+		rte_eth_dev_info_get(portid, &dev_info[portid]);
+		
+		ret = rte_eth_dev_configure(portid, 1, 1, &port_conf);
+		if (ret < 0) {
+			rte_exit(-1, "Cannot configure device: err=%d, port=%u\n", ret, (unsigned) portid);
+		}
+
+		ret = rte_eth_rx_queue_setup(portid, 0, dev_info[portid].rx_desc_lim.nb_min, rte_eth_dev_socket_id(portid), NULL, mbuf_pool);
+		if (ret < 0) {
+			rte_exit(-1, "rte_eth_rx_queue_setup:err=%d, port=%u\n", ret, (unsigned) portid);
+		}
+
+		ret = rte_eth_tx_queue_setup(portid, 0, dev_info[portid].tx_desc_lim.nb_min, rte_eth_dev_socket_id(portid), NULL);
+		if (ret < 0) {
+			rte_exit(-1, "rte_eth_tx_queue_setup:err=%d, port=%u\n", ret, (unsigned) portid);
+		}
+
+		ret = rte_eth_dev_start(portid);
+		if (ret < 0) {
+			rte_exit(-1, "rte_eth_dev_start:err=%d, port=%u\n", ret, (unsigned) portid);
+		}
+			
+		rte_eth_promiscuous_enable(portid);
+
+	}
+
 	dataplane_init();
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
