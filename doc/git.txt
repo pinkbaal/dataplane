@@ -1,0 +1,30 @@
+
+
+#git命令
+
+#将远程库同步到本地仓库
+git fetch origin
+#将本地仓库同步到当前工作区
+git merge origin/master
+#将远程仓库同步到本地仓库和当前工作区 git pull <远程主机名> <远程分支名>:<本地分支名>
+git pull origin master:master
+#将本地仓库同步到远程仓库 git push <远程主机名> <本地分支名>:<远程分支名>
+git push origin master:master
+
+#查看提交记录
+git log
+#查看某次提交记录的diff
+git show 8eaefc8df29b4d9ce3be1836c31a0036029e7f59
+
+#查看远程仓库
+git remote -v
+git remote show origin
+
+
+git diff --cached
+
+
+git config --global color.diff auto
+git config --global color.status auto
+git config --global user.email pinkbaal@sina.com
+git config --global user.name "pinkbaal"
