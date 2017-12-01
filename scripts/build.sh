@@ -17,10 +17,10 @@ compile_dpdk()
 	if [ ! -d "${DPDK_ROOT_DIR}" ]; then
 		cd ${DP_ROOT_DIR}/extlib/dpdk/
 		if [ ! -f dpdk-${DPDK_VERSION}.tar ]; then
-			wget -P ${DP_ROOT_DIR}/extlib/dpdk/ http://fast.dpdk.org/rel/dpdk-17.05.2.tar.xz
-			xz -d dpdk-17.05.2.tar.xz
+			wget -P ${DP_ROOT_DIR}/extlib/dpdk/ http://fast.dpdk.org/rel/dpdk-${DPDK_VERSION}.tar.xz
+			xz -d dpdk-${DPDK_VERSION}.tar.xz
 		fi
-		tar xf dpdk-17.05.2.tar
+		tar xf dpdk-${DPDK_VERSION}.tar
 		patch -Np1 -d ${DPDK_ROOT_DIR} < ${DP_ROOT_DIR}/patch/dpdk.diff 
 		cd -
 	fi

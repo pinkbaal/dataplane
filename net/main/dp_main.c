@@ -3,8 +3,9 @@
 #include <unistd.h>
 
 #include <dp_types.h>
+#include <dp_common.h>
 #include <lib/dp_memory.h>
-#include <net/ipv4_public.h>
+#include <net/dp_ipv4.h>
 
 #include <rte_debug.h>
 #include <rte_eal.h>
@@ -12,6 +13,8 @@
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_cycles.h>
+
+#include "dp_main.h"
 
 
 static const struct rte_eth_conf port_conf = {
