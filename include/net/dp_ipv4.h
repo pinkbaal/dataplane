@@ -1,6 +1,6 @@
-#ifndef __IPV4_PUBLIC_H__
-#define __IPV4_PUBLIC_H__
+#ifndef __DP_IPV4_H__
+#define __DP_IPV4_H__
 
-void us_ipv4_init(void);
+void dp_ipv4_init(void);
 
-#endif //__IPV4_PUBLIC_H__
+#endif //__DP_IPV4_H__

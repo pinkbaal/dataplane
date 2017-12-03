@@ -1,7 +1,7 @@
 DP_ROOT_DIR = ./..
 DP_LIB_DIR = $(DP_ROOT_DIR)/build/lib
 
-LIBS := libdp_memory libdp_list
+LIBS := libdp_memory libdp_list libdp_vector libdp_epoll
 
 
 all:

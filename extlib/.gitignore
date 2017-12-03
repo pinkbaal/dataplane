@@ -1,5 +1,4 @@
 # Ignore everything in this directory 
 * 
 dpdk/*
-lib/*
 # Except this file !.gitignore
