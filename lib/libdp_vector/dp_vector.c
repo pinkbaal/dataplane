@@ -21,8 +21,8 @@
 
 #include <string.h>
 
-#include <dp_memory.h>
-#include <dp_vector.h>
+#include <lib/dp_memory.h>
+#include <lib/dp_vector.h>
 
 #define MTYPE_VECTOR 0
 #define MTYPE_VECTOR_INDEX 0

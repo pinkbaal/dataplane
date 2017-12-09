@@ -8,7 +8,7 @@
 #include <dp_common.h>
 #include <lib/dp_memory.h>
 #include <lib/dp_epoll.h>
-#include <net/dp_cmdline.h>
+#include <net/dp_vtysh.h>
 #include <net/dp_ipv4.h>
 
 #include <rte_debug.h>
@@ -373,8 +373,9 @@ static s32 dp_port_init(void)
 
 static s32 dp_module_init(void)
 {
-	dp_cmdline_init();
 	dp_ipv4_init();
+	dp_vtysh_init();
+	dp_epoll_init();
 	
 	return 0;
 }
@@ -418,14 +419,13 @@ s32 main(s32 argc, s8 **argv)
 	u16 nb_queue = 2, queue_id;
 	s32 ret;
 	u32 lcore_id;
-	
 	struct rte_eth_dev_info dev_info[RTE_MAX_ETHPORTS];
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
 		rte_exit(ret, "Cannot init EAL ret%d\n", ret);
 	}
-
+	
 	argc -= ret;
 	argv += ret;
 

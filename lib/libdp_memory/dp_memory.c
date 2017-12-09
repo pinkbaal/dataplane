@@ -1,28 +1,32 @@
 
-#include <rte_malloc.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "dp_memory_compat.h"
+
 
 void *dp_malloc(unsigned long val, size_t size)
 {
 	(void)val;
-	return rte_malloc("dp_memmory", size, 0);
+	return __dp_malloc(size);
 }
 
 void *dp_zalloc(unsigned long val, size_t size)
 {
 	(void)val;
-	return rte_zmalloc("dp_memmory", size, 0);
+	return __dp_zalloc(size);
 }
 
 void *dp_realloc(unsigned long val, void *ptr, size_t size)
 {
 	(void)val;
-	return rte_realloc(ptr, size, 0);
+	return __dp_realloc(ptr, size);
 }
 
 
 void dp_free(void *ptr)
 {
-	rte_free(ptr);
+	__dp_free(ptr);
 }
 
 

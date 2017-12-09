@@ -10,9 +10,12 @@ RTE_TARGET := x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += ipv4 cmdline main
+DIRS-y += ipv4 
+DIRS-y += vtysh
+DIRS-y += memory
+DIRS-y += main
 
-DEPDIRS-dataplane := ipv4 cmdline
+DEPDIRS-dataplane := ipv4 vtysh
 
 EXTRA_CFLAGS += -O0 -g -Wfatal-errors
 

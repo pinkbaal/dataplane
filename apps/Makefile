@@ -1,5 +1,5 @@
 
-SUBDIRS = libdp_epoll libdp_memory libdp_vector
+SUBDIRS = vtysh
 
 .PHONY: all install clean
 

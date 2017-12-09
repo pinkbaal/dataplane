@@ -10,5 +10,5 @@ _postclean
 _postbuild
 dataplane
 
-
+net/*/x86_64-native-linuxapp-gcc/*
 

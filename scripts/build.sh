@@ -59,6 +59,8 @@ compile_apps()
 	echo "================="
 	echo "Compile APPS"
 	echo "================="
+	cd ${DP_ROOT_DIR}/apps
+	make clean; make
 }
 
 compile_dataplane()
@@ -90,6 +92,12 @@ clean_all()
 	echo "================="
 	echo "clean ALL"
 	echo "================="	
+	cd ${DP_ROOT_DIR}/net
+        make clean;
+	cd ${DP_ROOT_DIR}/lib
+        make clean; 
+	cd ${DP_ROOT_DIR}/apps
+	make clean;
 }
 
 
@@ -105,7 +113,7 @@ case $1 in
 	lib)
 		compile_uslib
 		;;
-	apps)
+	app)
 		compile_apps
 		;;
 	dp)
@@ -118,6 +126,6 @@ case $1 in
 		clean_all
 		;;
 	*)
-		echo "Usage: $0 all|dpdk|urcu|lib|apps|dp"
+		echo "Usage: $0 all|dpdk|urcu|lib|app|dp"
 		;;
 esac

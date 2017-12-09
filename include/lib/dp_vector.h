@@ -31,6 +31,7 @@ struct _vector
   void **index;			/* index to data */
 };
 typedef struct _vector *vector;
+typedef struct _vector vector_s;
 
 #define VECTOR_MIN_SIZE 1
 

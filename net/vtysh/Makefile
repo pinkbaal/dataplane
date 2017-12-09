@@ -8,9 +8,9 @@ RTE_OUTPUT := ./x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-SRCS-y := cmdline_core.c
+SRCS-y := vtysh_core.c
 
-OBJ = cmdline.o
+OBJ = vtysh.o
 
 CFLAGS += -I$(DP_ROOT_DIR)/include -I$(DP_ROOT_DIR)/include/net -I$(DP_ROOT_DIR)/include/lib
 
