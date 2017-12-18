@@ -35,6 +35,36 @@ compile_dpdk()
 	make install T=x86_64-native-linuxapp-gcc
 }
 
+compile_quagga()
+{
+	echo "================="
+	echo "Compile QUAGGA"
+	echo "================="
+	QUAGGA_VERSION="1.2.2"
+	QUAGGA_ROOT_DIR="${DP_ROOT_DIR}/apps/quagga/quagga-${QUAGGA_VERSION}"
+	cd ${QUAGGA_ROOT_DIR}
+	QUAGGA_CONFIG=" --disable-bgpd \
+			--disable-ripd \
+			--disable-ripngd \
+			--disable-ospf6d \
+			--disable-nhrpd \
+			--disable-watchquagga \
+			--disable-isisd \
+			--disable-pimd \
+			--disable-bgp-announce \
+			--disable-ospfapi \
+			--disable-ospfclient \
+			--disable-rtadv \
+			--disable-capabilities \
+			--disable-rusage \
+			"
+	${QUAGGA_ROOT_DIR}/configure ${QUAGGA_CONFIG}
+	find . -name Makefile |xargs sed -i "s/-O2/-O0 -g/g"
+	find . -name Makefile |xargs sed -i "s/-Os/-O0 -g/g"
+	find . -name Makefile |xargs sed -i "s/-D_FORTIFY_SOURCE=2/-D_FORTIFY_SOURCE=0 -g/g"
+	make
+}
+
 
 compile_urcu()
 {
@@ -83,7 +113,6 @@ compile_all()
 	compile_urcu
 	compile_uslib
 	compile_dataplane
-	compile_apps
 }
 
 
@@ -96,8 +125,6 @@ clean_all()
         make clean;
 	cd ${DP_ROOT_DIR}/lib
         make clean; 
-	cd ${DP_ROOT_DIR}/apps
-	make clean;
 }
 
 
@@ -109,6 +136,9 @@ case $1 in
 		;;
 	urcu)
 		compile_urcu
+		;;
+	quagga)
+		compile_quagga
 		;;
 	lib)
 		compile_uslib
@@ -126,6 +156,6 @@ case $1 in
 		clean_all
 		;;
 	*)
-		echo "Usage: $0 all|dpdk|urcu|lib|app|dp"
+		echo "Usage: $0 all|dpdk|urcu|lib|app|dp|quagga"
 		;;
 esac

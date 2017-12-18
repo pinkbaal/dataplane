@@ -1,6 +1,7 @@
-
 #include <stdlib.h>
 #include <string.h>
+
+#include "dp_memory_compat.h"
 
 __attribute__((weak)) void *__dp_malloc(size_t size)
 {
@@ -26,4 +27,9 @@ __attribute__((weak)) void __dp_free(void *ptr)
 	return free(ptr);
 }
 
+
+__attribute__((weak)) void *__dp_calloc(size_t nmemb, size_t size)
+{
+	return calloc(nmemb, size);
+}
 

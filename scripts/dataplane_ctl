@@ -21,6 +21,8 @@ dp_start_pre()
 	ip link set dev eth3 down
 	${DPDK_ROOT_DIR}/usertools/dpdk-devbind.py --bind=igb_uio eth2
 	${DPDK_ROOT_DIR}/usertools/dpdk-devbind.py --bind=igb_uio eth3
+	
+	#quagga
 }
 
 

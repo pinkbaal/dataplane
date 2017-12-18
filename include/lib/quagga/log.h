@@ -57,6 +57,7 @@ typedef enum
   ZLOG_PIM,
   ZLOG_MASC,
   ZLOG_NHRP,
+  ZLOG_DATAPLANE,
 } zlog_proto_t;
 
 /* If maxlvl is set to ZLOG_DISABLED, then no messages will be sent

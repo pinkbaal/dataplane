@@ -165,7 +165,10 @@ zstrdup (int type, const char *str)
 {
   void *dup;
 #ifdef __DATA_PLANE__
-	dup = dp_strdup(0, str);
+	dup = dp_malloc(0, strlen(str) + 1);
+	if (dup) {
+		memcpy(dup, str, strlen(str) + 1);
+	}
 #else
   dup = strdup (str);
 #endif

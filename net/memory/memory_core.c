@@ -22,6 +22,10 @@ void __dp_free(void *ptr)
 	rte_free(ptr);
 }
 
+void *__dp_calloc(size_t nmemb, size_t size)
+{
+	return rte_calloc("dp_memmory", nmemb, size, 0);
+}
 
 
 

@@ -28,6 +28,7 @@ struct data_plane {
 	u64 fwd_lcore_maps[BITS_TO_LONGS(RTE_MAX_LCORE)];
 	struct rte_mempool *mbuf_pool;
 	struct dp_lcore_conf lcore_conf[RTE_MAX_LCORE];
+	struct thread_master *master;
 };
 
 

@@ -2,7 +2,7 @@ TOP_DIR = ./../..
 
 LIB_CFLAGS += -g -O0 -DHAVE_CONFIG_H -DSYSCONFDIR=\"/usr/local/etc/\" -D__DATA_PLANE__
 
-LIB_LDFLAGS += libdp_memory.a
+LIB_LDFLAGS += 
 
 TARGET=libdp_quagga.a
 

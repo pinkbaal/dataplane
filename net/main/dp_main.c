@@ -5,10 +5,9 @@
 
 #include <dp_types.h>
 #include <dp_bitops.h>
-#include <dp_common.h>
 #include <lib/dp_memory.h>
-#include <lib/dp_epoll.h>
-#include <net/dp_vtysh.h>
+#include <lib/dp_quagga.h>
+#include <net/dp_cmd.h>
 #include <net/dp_ipv4.h>
 
 #include <rte_debug.h>
@@ -61,6 +60,9 @@ static const struct option long_options[] = {
 
 
 struct data_plane dataplane;
+
+
+#define DP_CONFIG_FILE_PATH 	"/usr/local/etc/dataplane.conf"
 
 static s32 dp_packet_dump(struct rte_mbuf *pkt)
 {
@@ -157,9 +159,10 @@ static s32 dp_transfer_loop(__attribute__((unused)) void *arg)
 
 static s32 dp_master_loop(__attribute__((unused)) void *arg)
 {	
-	while(1) {
-		dp_epoll_evnet_handle(1000);
-		sleep(1);
+	struct thread thread;
+	
+	while (thread_fetch (dataplane.master, &thread)) {
+		thread_call (&thread);
 	}
 }
 
@@ -370,13 +373,44 @@ static s32 dp_port_init(void)
 	
 }
 
+static s32 dp_master_init(void)
+{
+	dataplane.master = thread_master_create();
+	if (dataplane.master == NULL) {
+		return -1;
+	}
+
+	zlog_default = openzlog ("dataplane", ZLOG_DATAPLANE,
+			   LOG_CONS|LOG_NDELAY|LOG_PID, LOG_DAEMON);
+
+	cmd_init (1);
+	
+	vty_init (dataplane.master);
+
+	vty_read_config (NULL, DP_CONFIG_FILE_PATH);
+	
+	vty_serv_sock (NULL, DATAPLANE_VTY_PORT, DATAPLANE_VTYSH_PATH);
+
+	
+
+	return 0;
+}
+
 
 static s32 dp_module_init(void)
 {
-	dp_ipv4_init();
-	dp_vtysh_init();
-	dp_epoll_init();
+	s32 ret;
+
+	ret = dp_cmd_init();
+	if (ret < 0) {
+		return -1;
+	}
 	
+	ret = dp_ipv4_init();
+	if (ret < 0) {
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -400,6 +434,11 @@ static s32 dp_eal_init(s32 argc, s8 **argv)
 	}
 
 	ret = dp_port_init();
+	if (ret < 0) {
+		return -1;
+	}
+
+	ret = dp_master_init();
 	if (ret < 0) {
 		return -1;
 	}
