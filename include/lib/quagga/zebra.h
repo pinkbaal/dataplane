@@ -21,9 +21,9 @@ Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #ifndef _ZEBRA_H
 #define _ZEBRA_H
 
-#ifdef HAVE_CONFIG_H
+//#ifdef HAVE_CONFIG_H
 #include <lib/quagga/config.h>
-#endif /* HAVE_CONFIG_H */
+//#endif /* HAVE_CONFIG_H */
 
 #ifdef SUNOS_5
 #define _XPG4_2

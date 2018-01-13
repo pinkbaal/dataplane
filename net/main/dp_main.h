@@ -15,6 +15,7 @@ struct dp_lcore_conf {
 	u16 nb_tx_port;
 	u16 tx_queue_id[RTE_MAX_ETHPORTS];
 	struct dp_rx_queue_info rx_queue[RTE_MAX_ETHPORTS * RTE_MAX_QUEUES_PER_PORT];
+	struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 };
 
 struct data_plane {
@@ -28,7 +29,6 @@ struct data_plane {
 	u64 fwd_lcore_maps[BITS_TO_LONGS(RTE_MAX_LCORE)];
 	struct rte_mempool *mbuf_pool;
 	struct dp_lcore_conf lcore_conf[RTE_MAX_LCORE];
-	struct thread_master *master;
 };
 
 

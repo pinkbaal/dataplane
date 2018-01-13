@@ -13,9 +13,11 @@ include $(RTE_SDK)/mk/rte.vars.mk
 DIRS-y += ipv4 
 DIRS-y += cmd
 DIRS-y += memory
+DIRS-y += quagga
 DIRS-y += main
 
-DEPDIRS-dataplane := ipv4 cmd memory
+
+DEPDIRS-dataplane := ipv4 cmd quagga memory 
 
 EXTRA_CFLAGS += -O0 -g -Wfatal-errors
 

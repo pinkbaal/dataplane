@@ -6,9 +6,9 @@
 #include <dp_types.h>
 #include <dp_bitops.h>
 #include <lib/dp_memory.h>
-#include <lib/dp_quagga.h>
 #include <net/dp_cmd.h>
 #include <net/dp_ipv4.h>
+#include <net/dp_quagga.h>
 
 #include <rte_debug.h>
 #include <rte_eal.h>
@@ -16,6 +16,10 @@
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_cycles.h>
+#include <rte_malloc.h>
+
+#include <rte_cycles.h>
+
 
 #include "dp_main.h"
 
@@ -41,6 +45,16 @@ static const struct rte_eth_conf port_conf = {
 	},
 };
 
+u32 dp_port_bind_conf[][3] = {
+	//lcore_id, port_id, rx_queue_id
+	{1,	0, 0},
+	{1, 1, 0},
+	{2, 0, 1},
+	{2, 1, 1},
+	{3, 0, 2},
+	{3, 1, 2},
+};
+
 static const s8 short_options[] = 
 	"l:"
 	"b:"
@@ -62,7 +76,8 @@ static const struct option long_options[] = {
 struct data_plane dataplane;
 
 
-#define DP_CONFIG_FILE_PATH 	"/usr/local/etc/dataplane.conf"
+#define DP_TX_BUFFER_MAX		32
+#define DP_PKT_RX_BURST			32
 
 static s32 dp_packet_dump(struct rte_mbuf *pkt)
 {
@@ -81,36 +96,59 @@ static s32 dp_packet_dump(struct rte_mbuf *pkt)
 }
 
 
-static s32 dp_xmit(struct rte_mbuf *pkt, u8 tx_port_id)
+static s32 dp_xmit(struct rte_mbuf *pkt, u8 out_port)
 {
 	u16 tx_queue_id;
 	u32 lcore_id;
-
-	lcore_id = rte_lcore_id();
+	s32 sent;
+	struct dp_lcore_conf *lcore_conf;
+	struct rte_eth_dev_tx_buffer *tx_buffer;
 	
-	tx_queue_id = dataplane.lcore_conf[lcore_id].tx_queue_id[tx_port_id];
-	rte_eth_tx_burst(tx_port_id, tx_queue_id, &pkt, 1);
+	lcore_id = rte_lcore_id();
+	lcore_conf = &dataplane.lcore_conf[lcore_id];
+	tx_buffer = lcore_conf->tx_buffer[out_port];
+	
+	tx_queue_id = lcore_conf->tx_queue_id[out_port];
+	sent = rte_eth_tx_buffer(out_port, tx_queue_id, tx_buffer, pkt);
 
 	return 0;
 }
 
-static s32 dp_netif_rx(struct rte_mbuf *pkt, u8 rx_port_id)
+static s32 dp_route(struct rte_mbuf *pkt, u8 in_port, u8 *out_port)
 {
-	u8 tx_idx, tx_port_id, nb_ports;
-	u16 tx_queue_id;
-	u32 lcore_id;
+	u8 port_id, nb_ports;
 	
-	lcore_id = rte_lcore_id();
 	nb_ports = rte_eth_dev_count();
 
-	dp_packet_dump(pkt);
-
-	for (tx_port_id = 0; tx_port_id < nb_ports; tx_port_id++) {
-		if (tx_port_id != rx_port_id) {
-			dp_xmit(pkt, tx_port_id);
-			break;
+	for (port_id = 0; port_id < nb_ports; port_id++) {
+		if (port_id != in_port) {
+			*out_port = port_id;
+			return 0;
 		}
 	}
+	
+	return -1;
+}
+
+static s32 dp_netif_rx(struct rte_mbuf *pkt, u8 in_port)
+{
+	u8 out_port;
+	u32 lcore_id, ret;
+	
+	lcore_id = rte_lcore_id();
+	
+
+	//dp_packet_dump(pkt);
+
+	usleep(1000);
+
+	ret = dp_route(pkt, in_port, &out_port);
+	if (ret < 0) {
+		rte_pktmbuf_free(pkt);
+		return -1;
+	}
+
+	dp_xmit(pkt, out_port);
 
 	return 0;
 	
@@ -124,16 +162,18 @@ static s32 dp_forward_loop(__attribute__((unused)) void *arg)
 	u16 nb_rx_queue, rx_nb_pkts;
 	u16 rx_idx, pkt_idx;
 	struct rte_mbuf *pkts_burst[8];
+	struct dp_lcore_conf *lcore_conf;
 	
 	lcore_id = rte_lcore_id();
-
+	lcore_conf = &dataplane.lcore_conf[lcore_id];
+	
 	while(1) {
 		/* rx */
-		nb_rx_queue = dataplane.lcore_conf[lcore_id].nb_rx_queue;
+		nb_rx_queue = lcore_conf->nb_rx_queue;
 		for (rx_idx = 0; rx_idx < nb_rx_queue; rx_idx++) {
-			rx_port_id = dataplane.lcore_conf[lcore_id].rx_queue[rx_idx].port_id;
-			rx_queue_id = dataplane.lcore_conf[lcore_id].rx_queue[rx_port_id].queue_id;
-			rx_nb_pkts = rte_eth_rx_burst(rx_port_id, rx_queue_id, pkts_burst, 8);
+			rx_port_id = lcore_conf->rx_queue[rx_idx].port_id;
+			rx_queue_id = lcore_conf->rx_queue[rx_port_id].queue_id;
+			rx_nb_pkts = rte_eth_rx_burst(rx_port_id, rx_queue_id, pkts_burst, 1);
 			if (rx_nb_pkts > 0) {
 				for (pkt_idx = 0; pkt_idx < rx_nb_pkts; pkt_idx++) {
 					dp_netif_rx(pkts_burst[pkt_idx], rx_port_id);
@@ -149,26 +189,23 @@ static s32 dp_forward_loop(__attribute__((unused)) void *arg)
 
 static s32 dp_dispatch_loop(__attribute__((unused)) void *arg)
 {
-
+	return 0;
 }
 
 static s32 dp_transfer_loop(__attribute__((unused)) void *arg)
 {
-
+	return 0;
 }
 
+
 static s32 dp_master_loop(__attribute__((unused)) void *arg)
-{	
-	struct thread thread;
-	
-	while (thread_fetch (dataplane.master, &thread)) {
-		thread_call (&thread);
-	}
+{		
+	return 0;
 }
 
 static s32 dp_dummuy_loop(__attribute__((unused)) void *arg)
 {
-	
+	return 0;
 }
 
 
@@ -276,13 +313,6 @@ static s32 dp_parse_args(s32 argc, s8 **argv)
 }
 
 
-
-static s32 dp_config_read(void)
-{
-	return 0;
-}
-
-
 static s32 dp_mem_init(void)
 {
 	u32 nb_ports;
@@ -299,99 +329,103 @@ static s32 dp_mem_init(void)
 	return 0;
 }
 
-static s32 dp_port_init(void)
+
+static s32 dp_port_pipeline_init(void)
 {
-	u16 port_id, lcore_id, rx_idx;
+	return 0;
+}
+
+static s32 dp_port_run2completion_init(void)
+{
+	u16 port_id, lcore_id, idx;
 	u32 nb_ports;
-	s32 ret, socket_id;
-	
+	s32 ret, socket_id, nb_queues;
+	struct dp_lcore_conf *lcore_conf;
+	struct rte_eth_dev_tx_buffer *tx_buffer;
 	struct rte_eth_dev_info dev_info[RTE_MAX_ETHPORTS];
 
 	nb_ports = rte_eth_dev_count();
 	memset(dev_info, 0, sizeof(dev_info));
 
-
-	if (dataplane.bind_mode == 1){
-		/* 每个lcore绑定所有网卡的一个rx ring */
-		
-	} else if (dataplane.bind_mode == 2) {
-		/* 根据配置文件绑定 */
-		
-	} else {
-		/* 虚拟机网卡只有一个rx ring 每个lcore绑定一个网卡 */
-		port_id = 0;
-		rx_idx = 0;
-		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-			if (test_bit(lcore_id, dataplane.fwd_lcore_maps) && port_id < nb_ports) {
-				dataplane.lcore_conf[lcore_id].rx_queue[rx_idx].queue_id = 0;
-				dataplane.lcore_conf[lcore_id].rx_queue[rx_idx].port_id = 0;
-				dataplane.lcore_conf[lcore_id].nb_rx_queue++;
-				port_id++;
-				rx_idx++;
-			}
-
-		}
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		lcore_conf = &dataplane.lcore_conf[lcore_id];
 		for (port_id = 0; port_id < nb_ports; port_id++) {
-			RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-				if (test_bit(lcore_id, dataplane.fwd_lcore_maps)) {
-					dataplane.lcore_conf[lcore_id].tx_queue_id[port_id] = 0;
-					dataplane.lcore_conf[lcore_id].nb_tx_port++;
+			tx_buffer = (struct rte_eth_dev_tx_buffer *)rte_zmalloc_socket("tx_buffer", 
+							RTE_ETH_TX_BUFFER_SIZE(DP_TX_BUFFER_MAX), 0, rte_eth_dev_socket_id(port_id));
+			if (tx_buffer == NULL) {
+				rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx on port %u\n", (unsigned) port_id);
+			}
+			rte_eth_tx_buffer_init(tx_buffer, DP_TX_BUFFER_MAX);
+			lcore_conf->tx_buffer[port_id] = tx_buffer;
+			lcore_conf->nb_tx_port++;
+			lcore_conf->tx_queue_id[port_id] = dataplane.nb_forward;
+		}
+		dataplane.nb_forward++;
+	}
+	/* bind rx queue */
+	RTE_ASSERT((rte_lcore_count()-1) * nb_ports == sizeof(dp_port_bind_conf)/sizeof(dp_port_bind_conf[0]));
+	
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		lcore_conf = &dataplane.lcore_conf[lcore_id];
+		for (port_id = 0; port_id < nb_ports; port_id++) {
+			for (idx = 0; idx < sizeof(dp_port_bind_conf)/sizeof(dp_port_bind_conf[0]); idx++) {
+				if (dp_port_bind_conf[idx][0] == lcore_id 
+					&& dp_port_bind_conf[idx][1] == port_id) {
+					lcore_conf->rx_queue[lcore_conf->nb_rx_queue].port_id = port_id;
+					lcore_conf->rx_queue[lcore_conf->nb_rx_queue].queue_id = dp_port_bind_conf[idx][2];
+					lcore_conf->nb_rx_queue++;
 				}
 			}
+		}
+	}
+
+	nb_queues = rte_align32pow2(dataplane.nb_forward);
+	for (port_id = 0; port_id < nb_ports; port_id++) {		
+		socket_id = rte_eth_dev_socket_id(port_id);
+		rte_eth_dev_info_get(port_id, &dev_info[port_id]);
+
+		RTE_ASSERT(dataplane.nb_forward <= dev_info[port_id].max_tx_queues);
+
+		ret = rte_eth_dev_configure(port_id, nb_queues, nb_queues, &port_conf);
+		if (ret < 0) {
+			return -1;
+		}		
+
+		for (idx = 0; idx < nb_queues; idx++) {
+			ret = rte_eth_rx_queue_setup(port_id, idx, dev_info[port_id].rx_desc_lim.nb_min, 
+				socket_id, NULL, dataplane.mbuf_pool);
+			if (ret < 0) {
+				return -1;
+			}
 		
-			
-			socket_id = rte_eth_dev_socket_id(port_id);
-			rte_eth_dev_info_get(port_id, &dev_info[port_id]);
-
-			ret = rte_eth_dev_configure(port_id, 1, 1, &port_conf);
-			if (ret < 0) {
-				return -1;
-			}
-
-			ret = rte_eth_rx_queue_setup(port_id, 0, dev_info[port_id].rx_desc_lim.nb_min, 
-					socket_id, NULL, dataplane.mbuf_pool);
-			if (ret < 0) {
-				return -1;
-			}
-
-			ret = rte_eth_tx_queue_setup(port_id, 0, dev_info[port_id].tx_desc_lim.nb_min, 
+			ret = rte_eth_tx_queue_setup(port_id, idx, dev_info[port_id].tx_desc_lim.nb_min, 
 					socket_id, NULL);
 			if (ret < 0) {
 				return -1;
 			}
-
-			ret = rte_eth_dev_start(port_id);
-			if (ret < 0) {
-				return -1;
-			}
-			
-			rte_eth_promiscuous_enable(port_id);
 		}
-	}
 
+		ret = rte_eth_dev_start(port_id);
+		if (ret < 0) {
+			return -1;
+		}
+		
+		rte_eth_promiscuous_enable(port_id);
+
+	}
 	
-	
+	return 0;
 }
 
-static s32 dp_master_init(void)
+static s32 dp_port_init(void)
 {
-	dataplane.master = thread_master_create();
-	if (dataplane.master == NULL) {
-		return -1;
+	if (1) {
+		/* run to completion 模型 */
+		dp_port_run2completion_init();
+	} else {
+		/* pipeline 模型 */
+		dp_port_pipeline_init();
 	}
-
-	zlog_default = openzlog ("dataplane", ZLOG_DATAPLANE,
-			   LOG_CONS|LOG_NDELAY|LOG_PID, LOG_DAEMON);
-
-	cmd_init (1);
-	
-	vty_init (dataplane.master);
-
-	vty_read_config (NULL, DP_CONFIG_FILE_PATH);
-	
-	vty_serv_sock (NULL, DATAPLANE_VTY_PORT, DATAPLANE_VTYSH_PATH);
-
-	
 
 	return 0;
 }
@@ -401,6 +435,11 @@ static s32 dp_module_init(void)
 {
 	s32 ret;
 
+	ret = dp_quagga_init();
+	if (ret < 0) {
+		return -1;
+	}
+	
 	ret = dp_cmd_init();
 	if (ret < 0) {
 		return -1;
@@ -423,11 +462,6 @@ static s32 dp_eal_init(s32 argc, s8 **argv)
 		return -1;
 	}
 
-	ret = dp_config_read();
-	if (ret < 0) {
-		return -1;
-	}
-
 	ret = dp_mem_init();
 	if (ret < 0) {
 		return -1;
@@ -438,16 +472,10 @@ static s32 dp_eal_init(s32 argc, s8 **argv)
 		return -1;
 	}
 
-	ret = dp_master_init();
-	if (ret < 0) {
-		return -1;
-	}
-
 	ret = dp_module_init();
 	if (ret < 0) {
 		return -1;
 	}
-	
 	
 	return 0;
 }
@@ -459,6 +487,8 @@ s32 main(s32 argc, s8 **argv)
 	s32 ret;
 	u32 lcore_id;
 	struct rte_eth_dev_info dev_info[RTE_MAX_ETHPORTS];
+
+	memset(&dataplane, 0, sizeof(dataplane));
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
